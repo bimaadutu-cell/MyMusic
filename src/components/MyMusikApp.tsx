@@ -7,6 +7,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LoginGate, type AuthUser } from "@/components/LoginGate";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { YouTubePlayerBridge } from "@/components/YouTubePlayerBridge";
+import { NativePlayer } from "@/lib/nativePlayer";
 import { getTracksByTag, musicCatalog, topArtists, type MusicItem } from "@/lib/music-data";
 
 type Toast = { id: number; message: string };
@@ -270,6 +271,35 @@ export function MyMusikApp() {
   const mixQueueRef = useRef<MusicItem[]>([]);
   const currentIdRef = useRef(musicCatalog[0].youtubeId);
   const errorStreak = useRef(0);
+  const playedRef = useRef<Set<string>>(new Set());
+  const mixVariantRef = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [engine, setEngine] = useState<"native" | "bridge">("native");
+  const nativeRef = useRef<NativePlayer | null>(null);
+  const onEndedRef = useRef<() => void>(() => undefined);
+
+  const ensureWakeAudio = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (!audioCtxRef.current) {
+        const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) return;
+        const ctx = new Ctor();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0005;
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = 85;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        audioCtxRef.current = ctx;
+      }
+      if (audioCtxRef.current.state === "suspended") void audioCtxRef.current.resume();
+    } catch {
+      /* keep-alive tidak didukung */
+    }
+  }, []);
 
   const trackMap = useMemo(() => new Map(musicCatalog.map((track) => [track.id, track])), []);
   const favoriteTracks = useMemo(() => favorites.map((id) => trackMap.get(id)).filter(Boolean) as MusicItem[], [favorites, trackMap]);
@@ -395,13 +425,14 @@ export function MyMusikApp() {
 
   async function prefetchMix(base: MusicItem, target = 15, extraQuery?: string) {
     try {
-      const moodKeyword = base.mood && base.mood !== "Search" && base.mood !== "Viral" ? base.mood : "";
-      const moodQuery = moodKeyword
-        ? `${moodKeyword} ${isIndonesian(base) ? "lagu indonesia" : "western songs"} 2026`
-        : isIndonesian(base)
-          ? "lagu indonesia viral 2026"
-          : "popular western songs 2026";
-      const queries = [`${base.title} ${base.artist}`, `${base.artist} similar songs`, moodQuery];
+      const variants = ["", "slowed", "live version", "cover", "akustik"];
+      const variant = variants[mixVariantRef.current % variants.length];
+      mixVariantRef.current += 1;
+      const queries = [
+        `${base.title} ${base.artist} ${variant}`.trim(),
+        `${base.artist} lagu terkenal lain`,
+        isIndonesian(base) ? "lagu indonesia terkenal 2026" : "famous pop songs 2026",
+      ];
       if (extraQuery) queries.push(extraQuery);
       const settled = await Promise.allSettled(
         queries.map(async (q) => {
@@ -413,7 +444,7 @@ export function MyMusikApp() {
       );
       const pool = settled.flatMap((item) => (item.status === "fulfilled" ? item.value : []));
       const seen = new Set([...mixQueueRef.current.map((p) => p.youtubeId), base.youtubeId, currentIdRef.current]);
-      const additions = pool.filter((t) => (seen.has(t.youtubeId) ? false : (seen.add(t.youtubeId), true)));
+      const additions = pool.filter((t) => !playedRef.current.has(t.youtubeId) && (seen.has(t.youtubeId) ? false : (seen.add(t.youtubeId), true)));
       for (let i = additions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [additions[i], additions[j]] = [additions[j], additions[i]];
@@ -431,6 +462,10 @@ export function MyMusikApp() {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       toast("Mode offline: riwayat & antarmuka tersedia, streaming butuh koneksi internet.");
     }
+    ensureWakeAudio();
+    playedRef.current.add(track.youtubeId);
+    setEngine("native");
+    nativeRef.current?.load(track.youtubeId, true).catch(() => setEngine("bridge"));
     setCurrent(track);
     setStarted(true);
     setPlaying(true);
@@ -447,7 +482,7 @@ export function MyMusikApp() {
     }
     void fetchLyrics(track);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchLyrics, toast]);
+  }, [ensureWakeAudio, fetchLyrics, toast]);
 
   const play = useCallback((track: MusicItem) => startTrack(track, false), [startTrack]);
 
@@ -540,21 +575,29 @@ export function MyMusikApp() {
     if (mixBusy.current) return;
     mixBusy.current = true;
     try {
-      const queries = isIndonesian(base)
-        ? [`${base.title} ${base.artist} remix`, `${base.title} ${base.artist}`]
-        : [`${base.title} ${base.artist}`, "top english pop hits 2026 Justin Bieber"];
+      const variants = ["", "slowed", "live version", "cover"];
+      const variant = variants[mixVariantRef.current % variants.length];
+      mixVariantRef.current += 1;
+      const queries = [
+        `${base.title} ${base.artist} ${variant}`.trim(),
+        `${base.artist} lagu terkenal lain`,
+        isIndonesian(base) ? "lagu indonesia galau terkenal" : "famous emotional pop songs",
+      ];
       const settled = await Promise.allSettled(queries.map(async (q) => {
         const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         if (!response.ok) return [] as MusicItem[];
         const payload = (await response.json()) as { tracks?: MusicItem[] };
         return payload.tracks ?? [];
       }));
-      const pool = settled
-        .flatMap((item) => (item.status === "fulfilled" ? item.value : []))
-        .filter((track) => track.youtubeId !== base.youtubeId);
+      const all = settled.flatMap((item) => (item.status === "fulfilled" ? item.value : []));
+      let pool = all.filter((track) => track.youtubeId !== base.youtubeId && !playedRef.current.has(track.youtubeId));
       const seen = new Set<string>();
-      const deduped = pool.filter((track) => (seen.has(track.youtubeId) ? false : (seen.add(track.youtubeId), true)));
-      const pick = deduped.length ? deduped[Math.floor(Math.random() * Math.min(deduped.length, 10))] : musicCatalog[Math.floor(Math.random() * musicCatalog.length)];
+      pool = pool.filter((track) => (seen.has(track.youtubeId) ? false : (seen.add(track.youtubeId), true)));
+      if (!pool.length) {
+        playedRef.current = new Set([base.youtubeId]);
+        pool = all.filter((track) => track.youtubeId !== base.youtubeId);
+      }
+      const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : musicCatalog[Math.floor(Math.random() * musicCatalog.length)];
       setMixLabel(`Mix ${base.title}`);
       play(pick);
     } finally {
@@ -585,6 +628,49 @@ export function MyMusikApp() {
     }
     void autoMix(current);
   }, [autoMix, current, playRandom, repeat, shuffle, startTrack]);
+
+  useEffect(() => {
+    const np = new NativePlayer();
+    np.onProgress = (p, d) => {
+      errorStreak.current = 0;
+      if (d > 0) setDuration(Math.floor(d));
+      setPosition(Math.floor(p));
+    };
+    np.onEnded = () => onEndedRef.current();
+    np.onState = (v) => setPlaying(v);
+    np.onError = () => setEngine("bridge");
+    nativeRef.current = np;
+    return () => {
+      np.destroy();
+      nativeRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
+
+  useEffect(() => {
+    nativeRef.current?.setVolume(volume);
+  }, [volume]);
+
+  useEffect(() => {
+    if (engine === "native" && seekVersion > 0) nativeRef.current?.seek(seekTo);
+  }, [engine, seekTo, seekVersion]);
+
+  useEffect(() => {
+    if (engine !== "native") return;
+    if (playing) nativeRef.current?.play();
+    else nativeRef.current?.pause();
+  }, [engine, playing]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden) ensureWakeAudio();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [ensureWakeAudio]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -980,7 +1066,7 @@ export function MyMusikApp() {
         </Link>
       </nav>
 
-      {authed && !(playerOpen && videoMode) ? (
+      {authed && engine === "bridge" && !(playerOpen && videoMode) ? (
         <div className="pointer-events-none fixed -bottom-[1200px] left-0 h-32 w-56 opacity-0" aria-hidden="true">
           <YouTubePlayerBridge {...bridgeProps} startAt={started ? position : 0} />
         </div>
@@ -1000,7 +1086,7 @@ export function MyMusikApp() {
               <button onClick={() => setPlayerOpen(false)} aria-label="Tutup"><Icon d="down" className="h-7 w-7" /></button>
               <div className="flex items-center rounded-full bg-black/40 p-1">
                 <button onClick={() => setVideoMode(false)} className={`grid h-9 w-9 place-items-center rounded-full ${!videoMode ? "bg-[#432634] text-white" : "text-zinc-400"}`} aria-label="Audio"><Icon d="headphones" className="h-5 w-5" /></button>
-                <button onClick={() => setVideoMode(true)} className={`grid h-9 w-9 place-items-center rounded-full ${videoMode ? "bg-[#432634] text-white" : "text-zinc-400"}`} aria-label="Video"><Icon d="video" className="h-5 w-5" /></button>
+                <button onClick={() => { setVideoMode(true); setEngine("bridge"); }} className={`grid h-9 w-9 place-items-center rounded-full ${videoMode ? "bg-[#432634] text-white" : "text-zinc-400"}`} aria-label="Video"><Icon d="video" className="h-5 w-5" /></button>
               </div>
               <div className="flex items-center gap-4">
                 <Icon d="cast" className="h-6 w-6" />
