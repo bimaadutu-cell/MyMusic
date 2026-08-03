@@ -1,0 +1,65 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "About Developer | MyMusik",
+  description: "Profil BimzOfficial, developer MyMusik PWA premium.",
+};
+
+export default function AboutDeveloperPage() {
+  return (
+    <main className="min-h-dvh bg-[#030303] px-4 py-8 text-white sm:px-6">
+      <section className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="mx-auto w-full max-w-sm">
+          <Image
+            src="/images/developer-bimzofficial.png"
+            width={900}
+            height={900}
+            priority
+            alt="Foto developer BimzOfficial"
+            className="aspect-square w-full rounded-3xl object-cover shadow-[0_0_70px_rgba(255,0,0,0.25)]"
+          />
+        </div>
+        <div>
+          <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-[#272727] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-[#3a3a3a]">
+            ← Kembali ke MyMusik
+          </Link>
+          <p className="mt-8 inline-flex rounded-full bg-[#272727] px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-300">
+            Developed by
+          </p>
+          <h1 className="mt-4 text-5xl font-bold tracking-tight sm:text-6xl">BimzOfficial</h1>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-300">
+            MyMusik dibuat sebagai Progressive Web App musik premium dengan struktur modern, pencarian lagu lengkap, player resmi di dalam web, dan pengalaman installable di Android maupun iOS.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <Info label="Nama" value="BimzOfficial" />
+            <Info label="WhatsApp" value="6283115955196" />
+            <Info label="Telegram" value="@b1mxzstore" />
+            <Info label="Instagram" value="bim_bim" />
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href="https://wa.me/6283115955196" target="_blank" rel="noreferrer" className="rounded-full bg-[#ff0000] px-6 py-3 font-semibold text-white transition hover:brightness-110">
+              Chat WhatsApp
+            </a>
+            <a href="https://t.me/b1mxzstore" target="_blank" rel="noreferrer" className="rounded-full bg-[#272727] px-6 py-3 font-semibold text-white transition hover:bg-[#3a3a3a]">
+              Telegram
+            </a>
+            <a href="https://www.instagram.com/bim09837?igsh=MWlibHdxZDJ1NmltOQ==" target="_blank" rel="noreferrer" className="rounded-full bg-[#272727] px-6 py-3 font-semibold text-white transition hover:bg-[#3a3a3a]">
+              Instagram
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-[#121212] p-4">
+      <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">{label}</p>
+      <p className="mt-2 break-words text-lg font-semibold">{value}</p>
+    </div>
+  );
+}

@@ -1,0 +1,44 @@
+{
+  "name": "MyMusik - Streaming Musik Modern",
+  "short_name": "MyMusik",
+  "description": "PWA musik premium developed by BimzOfficial.",
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#030303",
+  "theme_color": "#FF0000",
+  "orientation": "portrait-primary",
+  "categories": ["music", "entertainment", "productivity"],
+  "lang": "id",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/mymusik-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/mymusik-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Telusuri Musik",
+      "short_name": "Telusuri",
+      "url": "/?tab=telusuri",
+      "icons": [{ "src": "/icons/mymusik-logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Koleksi",
+      "short_name": "Koleksi",
+      "url": "/?tab=koleksi",
+      "icons": [{ "src": "/icons/mymusik-logo.png", "sizes": "192x192" }]
+    }
+  ]
+}
