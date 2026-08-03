@@ -143,7 +143,7 @@ export function LoginGate({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
       <motion.div initial={{ opacity: 0, y: 26, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 240, damping: 26 }} className="relative w-full max-w-sm">
         <div className="animate-floaty mx-auto w-fit">
-          <Image src="/icons/mymusik-logo.png" width={96} height={96} priority alt="MyMusik" className="rounded-full shadow-[0_0_60px_rgba(255,0,0,0.5)]" />
+          <Image src="/icons/mymusik-logo.svg" width={96} height={96} priority alt="MyMusik" className="rounded-full shadow-[0_0_60px_rgba(255,0,0,0.5)]" />
         </div>
         <h1 className="mt-6 text-center text-4xl font-bold tracking-tight text-white">MyMusik</h1>
         <p className="mt-2 text-center text-sm text-zinc-400">Streaming Musik Modern • Developed by BimzOfficial</p>

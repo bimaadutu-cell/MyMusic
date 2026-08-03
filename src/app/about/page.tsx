@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { DevPhoto } from "@/components/DevPhoto";
 
 export const metadata: Metadata = {
   title: "About Developer | MyMusik",
@@ -12,14 +12,7 @@ export default function AboutDeveloperPage() {
     <main className="min-h-dvh bg-[#030303] px-4 py-8 text-white sm:px-6">
       <section className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="mx-auto w-full max-w-sm">
-          <Image
-            src="/images/developer-bimzofficial.png"
-            width={900}
-            height={900}
-            priority
-            alt="Foto developer BimzOfficial"
-            className="aspect-square w-full rounded-3xl object-cover shadow-[0_0_70px_rgba(255,0,0,0.25)]"
-          />
+          <DevPhoto />
         </div>
         <div>
           <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-[#272727] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-[#3a3a3a]">
@@ -48,6 +41,13 @@ export default function AboutDeveloperPage() {
             <a href="https://www.instagram.com/bim09837?igsh=MWlibHdxZDJ1NmltOQ==" target="_blank" rel="noreferrer" className="rounded-full bg-[#272727] px-6 py-3 font-semibold text-white transition hover:bg-[#3a3a3a]">
               Instagram
             </a>
+          </div>
+          <div className="mt-8 rounded-2xl bg-[#121212] p-5 text-sm leading-7 text-zinc-400">
+            Mau jadi APK? Setelah deploy, bungkus web ini menjadi APK Android lewat{" "}
+            <a href="https://www.pwabuilder.com" target="_blank" rel="noreferrer" className="font-semibold text-white underline">
+              PWABuilder
+            </a>{" "}
+            atau install langsung sebagai PWA dari menu browser.
           </div>
         </div>
       </section>

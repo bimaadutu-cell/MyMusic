@@ -22,10 +22,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
       { url: "/icons/mymusik-logo.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [{ url: "/icons/mymusik-logo.png", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/icons/mymusik-logo.png"],
+    shortcut: ["/icon.svg"],
   },
   openGraph: {
     type: "website",

@@ -395,9 +395,13 @@ export function MyMusikApp() {
 
   async function prefetchMix(base: MusicItem, target = 15, extraQuery?: string) {
     try {
-      const queries = isIndonesian(base)
-        ? [`${base.title} ${base.artist} remix`, `${base.artist} lagu populer`, `${base.genre} indonesia viral 2026`]
-        : [`${base.title} ${base.artist}`, "top english pop hits 2026 Justin Bieber", `${base.genre} hits 2026`];
+      const moodKeyword = base.mood && base.mood !== "Search" && base.mood !== "Viral" ? base.mood : "";
+      const moodQuery = moodKeyword
+        ? `${moodKeyword} ${isIndonesian(base) ? "lagu indonesia" : "western songs"} 2026`
+        : isIndonesian(base)
+          ? "lagu indonesia viral 2026"
+          : "popular western songs 2026";
+      const queries = [`${base.title} ${base.artist}`, `${base.artist} similar songs`, moodQuery];
       if (extraQuery) queries.push(extraQuery);
       const settled = await Promise.allSettled(
         queries.map(async (q) => {
@@ -410,6 +414,10 @@ export function MyMusikApp() {
       const pool = settled.flatMap((item) => (item.status === "fulfilled" ? item.value : []));
       const seen = new Set([...mixQueueRef.current.map((p) => p.youtubeId), base.youtubeId, currentIdRef.current]);
       const additions = pool.filter((t) => (seen.has(t.youtubeId) ? false : (seen.add(t.youtubeId), true)));
+      for (let i = additions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [additions[i], additions[j]] = [additions[j], additions[i]];
+      }
       const merged = [...mixQueueRef.current, ...additions].slice(0, target);
       mixQueueRef.current = merged;
       setMixQueue(merged);
@@ -694,7 +702,7 @@ export function MyMusikApp() {
         {showSplash ? (
           <motion.div className="fixed inset-0 z-[100] grid place-items-center bg-[#030303]" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-              <Image src="/icons/mymusik-logo.png" width={112} height={112} priority alt="MyMusik" className="mx-auto rounded-full shadow-[0_0_70px_rgba(255,0,0,0.45)]" />
+              <Image src="/icons/mymusik-logo.svg" width={112} height={112} priority alt="MyMusik" className="mx-auto rounded-full shadow-[0_0_70px_rgba(255,0,0,0.45)]" />
               <h1 className="mt-6 text-5xl font-bold tracking-tight">MyMusik</h1>
               <p className="mt-2 text-zinc-400">Streaming Musik Modern</p>
               <p className="mt-1 text-xs uppercase tracking-[0.3em] text-zinc-500">Developed by BimzOfficial</p>
@@ -705,7 +713,7 @@ export function MyMusikApp() {
 
       <header className="sticky top-0 z-40 flex items-center justify-between bg-[#030303] px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/icons/mymusik-logo.png" width={34} height={34} alt="MyMusik" className="rounded-full" />
+          <Image src="/icons/mymusik-logo.svg" width={34} height={34} alt="MyMusik" className="rounded-full" />
           <span className="text-xl font-semibold">Music</span>
         </Link>
         <div className="flex items-center gap-4 text-white">
@@ -911,10 +919,12 @@ export function MyMusikApp() {
 
       <main className={`pb-40 ${tab === "koleksi" ? "block" : "hidden"}`}>
         <h2 className="px-4 pb-3 text-2xl font-semibold">Koleksi</h2>
-        <div className="flex gap-2 px-4 pb-3">
+        <div className="flex flex-wrap gap-2 px-4 pb-3">
           <Link href="/admin" className="rounded-lg bg-[#272727] px-4 py-2 text-sm font-medium">Playlist & Admin</Link>
           <Link href="/about" className="rounded-lg bg-[#272727] px-4 py-2 text-sm font-medium">Developer</Link>
+          <a href="https://www.pwabuilder.com" target="_blank" rel="noreferrer" className="rounded-lg bg-[#272727] px-4 py-2 text-sm font-medium">Dapatkan APK</a>
         </div>
+        <p className="px-4 pb-2 text-xs leading-5 text-zinc-500">Install sebagai aplikasi dari menu browser, atau bungkus jadi APK Android via PWABuilder setelah deploy. Musik tetap lanjut saat layar mati atau aplikasi diminimize.</p>
         <div className="px-2">
           {favoriteTracks.length ? favoriteTracks.map((track) => <RowItem key={track.id} track={track} onPlay={play} onMenu={() => toast(`Diputar berikutnya: ${track.title}`)} />) : (
             <div className="px-6 py-10 text-center text-zinc-400">Belum ada lagu yang disimpan. Ketuk ikon simpan pada lagu untuk menambahkannya ke sini.</div>

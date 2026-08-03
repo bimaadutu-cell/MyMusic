@@ -68,7 +68,7 @@ export function PwaInstallPrompt({ onToast }: { onToast?: (message: string) => v
           exit={{ opacity: 0, y: 24 }}
         >
           <div className="flex gap-4">
-            <Image src="/icons/mymusik-logo.png" width={52} height={52} alt="MyMusik" className="rounded-full" />
+            <Image src="/icons/mymusik-logo.svg" width={52} height={52} alt="MyMusik" className="rounded-full" />
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold">Install MyMusik</h2>
               <p className="mt-1 text-sm leading-6 text-zinc-300">Dengarkan musik langsung dari Home Screen dengan performa lebih cepat.</p>

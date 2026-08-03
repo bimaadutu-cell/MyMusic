@@ -61,7 +61,7 @@ export default function AdminPanelPage() {
       <section className="mx-auto max-w-6xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3 rounded-full bg-[#121212] px-4 py-2.5">
-            <Image src="/icons/mymusik-logo.png" width={38} height={38} alt="MyMusik" className="rounded-full" />
+            <Image src="/icons/mymusik-logo.svg" width={38} height={38} alt="MyMusik" className="rounded-full" />
             <span className="font-semibold">MyMusik Admin</span>
           </Link>
           <div className="flex gap-2">
