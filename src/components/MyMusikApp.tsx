@@ -96,6 +96,7 @@ const I = {
   chevron: <path d="m9 6 6 6-6 6" />,
   translate: <path d="M4 5h8M8 3v2m1 0c-.5 4-3 7-5 8m2-5c1 3 3 5 5 6m2 1 4-9 4 9m-7-2h6" />,
   sun: <path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.7-5.7 1.4-1.4M4.9 19.1l1.4-1.4m0-11.4L4.9 4.9m14.2 14.2-1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />,
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" />,
 };
 
 function Icon({ d, className = "h-6 w-6", fill = false }: { d: keyof typeof I; className?: string; fill?: boolean }) {
@@ -140,10 +141,9 @@ function PlayerEmbed({ provider, customEmbed, videoId, playing, startAt, bridgeP
     return <YouTubePlayerBridge {...bridgeProps} startAt={startAt} />;
   }
   const bases: Record<string, string> = {
-    piped: "https://piped.video/embed/",
-    invidious: "https://inv.nadeko.net/embed/",
+    nocookie: "https://www.youtube-nocookie.com/embed/",
   };
-  const template = provider === "gootube" ? customEmbed || "https://www.gootube.example/embed/{id}" : bases[provider] ?? customEmbed;
+  const template = provider === "gootube" ? customEmbed || "https://www.youtube-nocookie.com/embed/" : bases[provider] ?? customEmbed;
   const srcBase = template.includes("{id}") ? template.replace("{id}", videoId) : `${template}${template.endsWith("/") ? "" : "/"}${videoId}`;
   const sep = srcBase.includes("?") ? "&" : "?";
   return (
@@ -160,10 +160,9 @@ function PlayerEmbed({ provider, customEmbed, videoId, playing, startAt, bridgeP
 
 function DevPanel({ provider, customEmbed, onSelect, onCustom, onClose }: { provider: string; customEmbed: string; onSelect: (id: string) => void; onCustom: (value: string) => void; onClose: () => void }) {
   const providers = [
-    { id: "official", label: "Resmi — kontrol penuh + wake lock latar belakang" },
-    { id: "piped", label: "Piped Embed (piped.video) — jalan saat layar off" },
-    { id: "invidious", label: "Invidious Embed — jalan saat layar off" },
-    { id: "gootube", label: "Gootube / Custom Embed — konfigurasi link sendiri" },
+    { id: "official", label: "Resmi — kontrol penuh + layar tetap hidup" },
+    { id: "nocookie", label: "No-Cookie langsung — pemutar paling stabil" },
+    { id: "gootube", label: "Gootube / Custom — link embed sendiri (bisa layar off)" },
   ];
   return (
     <motion.div className="fixed inset-0 z-[96] bg-black/70 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
@@ -205,7 +204,7 @@ function DevPanel({ provider, customEmbed, onSelect, onCustom, onClose }: { prov
             <p className="mt-2 text-xs leading-5 text-zinc-500">Contoh: https://domain-kamu.com/embed/{"{id}"} — parameter autoplay ditambahkan otomatis.</p>
           </div>
         ) : null}
-        <p className="mt-5 text-xs leading-5 text-zinc-500">Catatan: embed alternatif (Piped/Invidious/Gootube) memakai player mereka sendiri sehingga tetap berbunyi saat layar off; tombol next/prev MyMusik tetap mengganti lagu.</p>
+        <p className="mt-5 text-xs leading-5 text-zinc-500">Catatan: mode No-Cookie paling stabil untuk pemutaran. Mode Gootube/Custom memakai player milikmu sendiri sehingga bisa tetap berbunyi saat layar off. Saat layar dinyalakan kembali, MyMusik otomatis melanjutkan lagu. Tombol next/prev/shuffle/mix tetap berfungsi di semua mode.</p>
       </motion.div>
     </motion.div>
   );
@@ -360,6 +359,9 @@ export function MyMusikApp() {
   const [provider, setProvider] = useState<string>(() => storage.get<string>("mymusik-provider", "official"));
   const [customEmbed, setCustomEmbed] = useState<string>(() => storage.get<string>("mymusik-custom-embed", ""));
   const [devOpen, setDevOpen] = useState(false);
+  const [resumeTick, setResumeTick] = useState(0);
+  const [screenOff, setScreenOff] = useState(false);
+  const [wakeHint, setWakeHint] = useState(false);
   const logoClicks = useRef(0);
   const logoTimer = useRef<number | null>(null);
   const providerRef = useRef(provider);
@@ -790,13 +792,20 @@ export function MyMusikApp() {
     const onVis = () => {
       if (document.visibilityState === "visible") {
         if (playing && keepAwake && started) void acquire();
-        if (wasPlayingRef.current && engine === "bridge") setPlaying(true);
+        if (wasPlayingRef.current) {
+          setResumeTick((value) => value + 1);
+          if (engine === "bridge") setPlaying(true);
+        }
       } else {
         wasPlayingRef.current = playing;
       }
     };
     document.addEventListener("visibilitychange", onVis);
+    const retry = window.setInterval(() => {
+      if (playing && keepAwake && started && document.visibilityState === "visible") void acquire();
+    }, 5000);
     return () => {
+      window.clearInterval(retry);
       release();
       document.removeEventListener("visibilitychange", onVis);
     };
@@ -1221,7 +1230,7 @@ export function MyMusikApp() {
       {authed && engine === "bridge" && !(playerOpen && videoMode) ? (
         <div className="pointer-events-none fixed -bottom-[1200px] left-0 h-32 w-56 opacity-0" aria-hidden="true">
           <PlayerEmbed
-            key={provider === "official" ? current.youtubeId : `${current.youtubeId}-${playing ? 1 : 0}-${provider}`}
+            key={provider === "official" ? current.youtubeId : `${current.youtubeId}-${playing ? 1 : 0}-${provider}-r${resumeTick}`}
             provider={provider}
             customEmbed={customEmbed}
             videoId={current.youtubeId}
@@ -1251,6 +1260,22 @@ export function MyMusikApp() {
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => {
+                    if (!playing) {
+                      toast("Putar lagu dulu untuk mode layar mati.");
+                      return;
+                    }
+                    setKeepAwake(true);
+                    setWakeHint(false);
+                    setScreenOff(true);
+                  }}
+                  className="text-zinc-300"
+                  aria-label="Mode layar mati"
+                  title="Mode layar mati: lagu tetap hidup"
+                >
+                  <Icon d="moon" className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={() => {
                     setKeepAwake((value) => !value);
                     toast(keepAwake ? "Layar bisa mati otomatis" : "Layar tetap hidup selama musik diputar");
                   }}
@@ -1266,10 +1291,10 @@ export function MyMusikApp() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
-              {videoMode ? (
+              {videoMode || provider !== "official" ? (
                 <div className="overflow-hidden rounded-xl">
                   <PlayerEmbed
-                    key={provider === "official" ? `v-${current.youtubeId}` : `v-${current.youtubeId}-${playing ? 1 : 0}-${provider}`}
+                    key={`v-${current.youtubeId}-${playing ? 1 : 0}-${provider}-r${resumeTick}`}
                     provider={provider}
                     customEmbed={customEmbed}
                     videoId={current.youtubeId}
@@ -1495,6 +1520,26 @@ export function MyMusikApp() {
           />
         ) : null}
       </AnimatePresence>
+
+      {screenOff ? (
+        <div
+          className="fixed inset-0 z-[130] bg-black"
+          onClick={() => {
+            if (wakeHint) {
+              setScreenOff(false);
+              setWakeHint(false);
+            } else {
+              setWakeHint(true);
+              window.setTimeout(() => setWakeHint(false), 1800);
+            }
+          }}
+          role="button"
+          aria-label="Layar mode mati, ketuk untuk menyalakan"
+        >
+          <p className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-sm text-zinc-700">{playing ? "Musik tetap diputar di latar belakang" : "Musik dijeda"}</p>
+          {wakeHint ? <p className="absolute inset-x-0 bottom-12 text-center text-xs text-zinc-500">Ketuk sekali lagi untuk menyalakan layar</p> : null}
+        </div>
+      ) : null}
 
       <div className="pointer-events-none fixed left-1/2 top-16 z-[95] -translate-x-1/2 space-y-2">
         <AnimatePresence>
