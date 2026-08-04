@@ -95,6 +95,7 @@ const I = {
   wave: <path d="M4 12v0m4-4v8m4-12v16m4-10v4m4-6v8" />,
   chevron: <path d="m9 6 6 6-6 6" />,
   translate: <path d="M4 5h8M8 3v2m1 0c-.5 4-3 7-5 8m2-5c1 3 3 5 5 6m2 1 4-9 4 9m-7-2h6" />,
+  sun: <path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.7-5.7 1.4-1.4M4.9 19.1l1.4-1.4m0-11.4L4.9 4.9m14.2 14.2-1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />,
 };
 
 function Icon({ d, className = "h-6 w-6", fill = false }: { d: keyof typeof I; className?: string; fill?: boolean }) {
@@ -131,6 +132,82 @@ function Card({ track, onPlay, wide = false }: { track: MusicItem; onPlay: (trac
       <p className="mt-2 truncate text-sm font-medium text-white">{track.title}</p>
       <p className="truncate text-xs text-zinc-400">Lagu • {track.artist}</p>
     </button>
+  );
+}
+
+function PlayerEmbed({ provider, customEmbed, videoId, playing, startAt, bridgeProps }: { provider: string; customEmbed: string; videoId: string; playing: boolean; startAt: number; bridgeProps: React.ComponentProps<typeof YouTubePlayerBridge> }) {
+  if (provider === "official") {
+    return <YouTubePlayerBridge {...bridgeProps} startAt={startAt} />;
+  }
+  const bases: Record<string, string> = {
+    piped: "https://piped.video/embed/",
+    invidious: "https://inv.nadeko.net/embed/",
+  };
+  const template = provider === "gootube" ? customEmbed || "https://www.gootube.example/embed/{id}" : bases[provider] ?? customEmbed;
+  const srcBase = template.includes("{id}") ? template.replace("{id}", videoId) : `${template}${template.endsWith("/") ? "" : "/"}${videoId}`;
+  const sep = srcBase.includes("?") ? "&" : "?";
+  return (
+    <iframe
+      title="Pemutar musik"
+      src={`${srcBase}${sep}autoplay=${playing ? 1 : 0}`}
+      className="aspect-video w-full rounded-xl bg-black"
+      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+      allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
+    />
+  );
+}
+
+function DevPanel({ provider, customEmbed, onSelect, onCustom, onClose }: { provider: string; customEmbed: string; onSelect: (id: string) => void; onCustom: (value: string) => void; onClose: () => void }) {
+  const providers = [
+    { id: "official", label: "Resmi — kontrol penuh + wake lock latar belakang" },
+    { id: "piped", label: "Piped Embed (piped.video) — jalan saat layar off" },
+    { id: "invidious", label: "Invidious Embed — jalan saat layar off" },
+    { id: "gootube", label: "Gootube / Custom Embed — konfigurasi link sendiri" },
+  ];
+  return (
+    <motion.div className="fixed inset-0 z-[96] bg-black/70 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div
+        className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-[#101010] p-6 pb-10"
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 340, damping: 36 }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white">Panel Developer</h3>
+          <button onClick={onClose} className="rounded-full bg-white/10 p-2 text-white" aria-label="Tutup"><Icon d="close" className="h-5 w-5" /></button>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">Ganti mesin pemutar embed sekali klik. Mode Gootube/Custom memakai template link dengan penanda <span className="font-mono text-emerald-300">{"{id}"}</span> yang diganti ID video otomatis.</p>
+        <div className="mt-5 space-y-2">
+          {providers.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onSelect(item.id)}
+              className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left text-sm font-medium transition ${provider === item.id ? "border-red-500 bg-red-500/10 text-white" : "border-white/10 bg-white/5 text-zinc-300"}`}
+            >
+              {item.label}
+              <span className={`h-4 w-4 rounded-full border ${provider === item.id ? "border-red-500 bg-red-500" : "border-zinc-500"}`} />
+            </button>
+          ))}
+        </div>
+        {provider === "gootube" ? (
+          <div className="mt-4">
+            <label className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Link Embed Gootube / Custom</label>
+            <input
+              value={customEmbed}
+              onChange={(event) => onCustom(event.target.value)}
+              placeholder="https://gootube.example/embed/{id}"
+              className="admin-input mt-2"
+            />
+            <p className="mt-2 text-xs leading-5 text-zinc-500">Contoh: https://domain-kamu.com/embed/{"{id}"} — parameter autoplay ditambahkan otomatis.</p>
+          </div>
+        ) : null}
+        <p className="mt-5 text-xs leading-5 text-zinc-500">Catatan: embed alternatif (Piped/Invidious/Gootube) memakai player mereka sendiri sehingga tetap berbunyi saat layar off; tombol next/prev MyMusik tetap mengganti lagu.</p>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -277,6 +354,15 @@ export function MyMusikApp() {
   const [engine, setEngine] = useState<"native" | "bridge">("native");
   const nativeRef = useRef<NativePlayer | null>(null);
   const onEndedRef = useRef<() => void>(() => undefined);
+  const [keepAwake, setKeepAwake] = useState(true);
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
+  const wasPlayingRef = useRef(false);
+  const [provider, setProvider] = useState<string>(() => storage.get<string>("mymusik-provider", "official"));
+  const [customEmbed, setCustomEmbed] = useState<string>(() => storage.get<string>("mymusik-custom-embed", ""));
+  const [devOpen, setDevOpen] = useState(false);
+  const logoClicks = useRef(0);
+  const logoTimer = useRef<number | null>(null);
+  const providerRef = useRef(provider);
 
   const ensureWakeAudio = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -464,8 +550,13 @@ export function MyMusikApp() {
     }
     ensureWakeAudio();
     playedRef.current.add(track.youtubeId);
-    setEngine("native");
-    nativeRef.current?.load(track.youtubeId, true).catch(() => setEngine("bridge"));
+    if (providerRef.current === "official") {
+      setEngine("native");
+      nativeRef.current?.prime();
+      nativeRef.current?.load(track.youtubeId, true).catch(() => setEngine("bridge"));
+    } else {
+      setEngine("bridge");
+    }
     setCurrent(track);
     setStarted(true);
     setPlaying(true);
@@ -651,6 +742,67 @@ export function MyMusikApp() {
   }, [onEnded]);
 
   useEffect(() => {
+    providerRef.current = provider;
+    storage.set("mymusik-provider", provider);
+  }, [provider]);
+
+  useEffect(() => {
+    storage.set("mymusik-custom-embed", customEmbed);
+  }, [customEmbed]);
+
+  const onLogoClick = useCallback((event: { preventDefault: () => void; stopPropagation: () => void }) => {
+    event.preventDefault();
+    event.stopPropagation();
+    logoClicks.current += 1;
+    if (logoTimer.current) window.clearTimeout(logoTimer.current);
+    if (logoClicks.current >= 7) {
+      logoClicks.current = 0;
+      setDevOpen(true);
+      return;
+    }
+    logoTimer.current = window.setTimeout(() => {
+      logoClicks.current = 0;
+    }, 1600);
+  }, []);
+
+  useEffect(() => {
+    const onFirstTap = () => nativeRef.current?.prime();
+    window.addEventListener("pointerdown", onFirstTap, { once: true });
+    return () => window.removeEventListener("pointerdown", onFirstTap);
+  }, []);
+
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) return;
+    const release = () => {
+      wakeLockRef.current?.release().catch(() => undefined);
+      wakeLockRef.current = null;
+    };
+    const acquire = async () => {
+      try {
+        const sentinel = await navigator.wakeLock.request("screen");
+        wakeLockRef.current = sentinel;
+      } catch {
+        /* wake lock ditolak */
+      }
+    };
+    if (playing && keepAwake && started) void acquire();
+    else release();
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        if (playing && keepAwake && started) void acquire();
+        if (wasPlayingRef.current && engine === "bridge") setPlaying(true);
+      } else {
+        wasPlayingRef.current = playing;
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      release();
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [engine, keepAwake, playing, started]);
+
+  useEffect(() => {
     nativeRef.current?.setVolume(volume);
   }, [volume]);
 
@@ -800,7 +952,7 @@ export function MyMusikApp() {
       <header className="sticky top-0 z-40 flex items-center justify-between bg-[#030303] px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
           <Image src="/icons/mymusik-logo.svg" width={34} height={34} alt="MyMusik" className="rounded-full" />
-          <span className="text-xl font-semibold">Music</span>
+          <span className="text-xl font-semibold" onClick={onLogoClick}>Music</span>
         </Link>
         <div className="flex items-center gap-4 text-white">
           <button onClick={() => toast("Notifikasi siap diaktifkan")} aria-label="Notifikasi"><Icon d="bell" /></button>
@@ -1068,7 +1220,15 @@ export function MyMusikApp() {
 
       {authed && engine === "bridge" && !(playerOpen && videoMode) ? (
         <div className="pointer-events-none fixed -bottom-[1200px] left-0 h-32 w-56 opacity-0" aria-hidden="true">
-          <YouTubePlayerBridge {...bridgeProps} startAt={started ? position : 0} />
+          <PlayerEmbed
+            key={provider === "official" ? current.youtubeId : `${current.youtubeId}-${playing ? 1 : 0}-${provider}`}
+            provider={provider}
+            customEmbed={customEmbed}
+            videoId={current.youtubeId}
+            playing={playing}
+            startAt={started ? position : 0}
+            bridgeProps={bridgeProps}
+          />
         </div>
       ) : null}
 
@@ -1089,6 +1249,17 @@ export function MyMusikApp() {
                 <button onClick={() => { setVideoMode(true); setEngine("bridge"); }} className={`grid h-9 w-9 place-items-center rounded-full ${videoMode ? "bg-[#432634] text-white" : "text-zinc-400"}`} aria-label="Video"><Icon d="video" className="h-5 w-5" /></button>
               </div>
               <div className="flex items-center gap-4">
+                <button
+                  onClick={() => {
+                    setKeepAwake((value) => !value);
+                    toast(keepAwake ? "Layar bisa mati otomatis" : "Layar tetap hidup selama musik diputar");
+                  }}
+                  className={keepAwake ? "text-red-400" : "text-zinc-400"}
+                  aria-label="Layar tetap hidup"
+                  title="Layar tetap hidup"
+                >
+                  <Icon d="sun" className="h-6 w-6" />
+                </button>
                 <Icon d="cast" className="h-6 w-6" />
                 <Icon d="more" className="h-6 w-6" />
               </div>
@@ -1097,7 +1268,15 @@ export function MyMusikApp() {
             <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
               {videoMode ? (
                 <div className="overflow-hidden rounded-xl">
-                  <YouTubePlayerBridge {...bridgeProps} startAt={position} />
+                  <PlayerEmbed
+                    key={provider === "official" ? `v-${current.youtubeId}` : `v-${current.youtubeId}-${playing ? 1 : 0}-${provider}`}
+                    provider={provider}
+                    customEmbed={customEmbed}
+                    videoId={current.youtubeId}
+                    playing={playing}
+                    startAt={position}
+                    bridgeProps={bridgeProps}
+                  />
                 </div>
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
@@ -1298,6 +1477,22 @@ export function MyMusikApp() {
               </button>
             </motion.div>
           </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {devOpen ? (
+          <DevPanel
+            provider={provider}
+            customEmbed={customEmbed}
+            onSelect={(id) => {
+              setProvider(id);
+              toast(`Engine embed diganti: ${id === "official" ? "Resmi" : id}`);
+              if (id !== "gootube") setDevOpen(false);
+            }}
+            onCustom={setCustomEmbed}
+            onClose={() => setDevOpen(false)}
+          />
         ) : null}
       </AnimatePresence>
 

@@ -1,5 +1,10 @@
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAA";
+
 export class NativePlayer {
   audio: HTMLAudioElement;
+  primed = false;
+  hasTrack = false;
   onProgress?: (position: number, duration: number) => void;
   onEnded?: () => void;
   onError?: () => void;
@@ -16,11 +21,25 @@ export class NativePlayer {
     this.audio.addEventListener("durationchange", () => {
       if (Number.isFinite(this.audio.duration)) this.onProgress?.(this.audio.currentTime, this.audio.duration);
     });
-    this.audio.addEventListener("play", () => this.onState?.(true));
-    this.audio.addEventListener("pause", () => this.onState?.(false));
+    this.audio.addEventListener("play", () => {
+      if (this.hasTrack) this.onState?.(true);
+    });
+    this.audio.addEventListener("pause", () => {
+      if (this.hasTrack) this.onState?.(false);
+    });
     this.audio.addEventListener("ended", () => this.onEnded?.());
     this.audio.addEventListener("error", () => {
       if (this.audio.src) this.onError?.();
+    });
+  }
+
+  prime() {
+    if (this.primed) return;
+    this.primed = true;
+    if (!this.audio.src) this.audio.src = SILENT_WAV;
+    this.audio.volume = 1;
+    void this.audio.play().catch(() => {
+      /* gestur belum valid, akan dicoba lagi saat play lagu */
     });
   }
 
@@ -29,6 +48,7 @@ export class NativePlayer {
     if (!response.ok) throw new Error("stream tidak tersedia");
     const payload = (await response.json()) as { url?: string | null };
     if (!payload.url) throw new Error("stream kosong");
+    this.hasTrack = true;
     this.audio.src = payload.url;
     if (autoplay) await this.audio.play();
   }
