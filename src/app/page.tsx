@@ -312,10 +312,21 @@ function AppContent() {
 
     if (serverType === "native") {
       if (audioRef.current) {
-        audioRef.current.src = `/api/stream?id=${song.id}`;
-        audioRef.current.load();
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) playPromise.catch(e => console.error("AutoPlay failed:", e));
+        audioRef.current.pause(); // Reset state
+        try {
+          const resolveRes = await fetch(`/api/resolve?id=${song.id}`);
+          const { url } = await resolveRes.json();
+          if (url) {
+            audioRef.current.src = url;
+            audioRef.current.load();
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+               playPromise.catch(e => console.error("AutoPlay blocked:", e));
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch direct URL");
+        }
       }
     } else {
       if (ytRef.current) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "mymusik-v5";
+const CACHE_NAME = "mymusik-v6";
 const ASSETS = ["/", "/logo.png", "/dev-logo.jpg", "/manifest.json"];
 
 self.addEventListener("install", (e) => {
@@ -14,8 +14,8 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
 
-  // Jangan pernah cache audio stream agar latar belakang tidak terganggu memori cache
-  if (url.pathname.startsWith('/api/stream')) return;
+  // Jangan cache audio stream/resolve agar file besar tidak merusak service worker
+  if (url.pathname.startsWith('/api/resolve')) return;
 
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
