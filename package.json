@@ -9,13 +9,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "@react-oauth/google": "^0.13.5",
+    "@types/yt-search": "^2.10.3",
+    "clsx": "^2.1.1",
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
     "framer-motion": "^12.43.0",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^1.28.0",
     "next": "16.2.6",
     "pg": "8.20.0",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "react-youtube": "^10.1.0",
+    "tailwind-merge": "^3.6.0",
+    "yt-search": "^2.13.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.17",
