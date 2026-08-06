@@ -5,6 +5,7 @@ import { Play, MoreVertical, Clock } from 'lucide-react';
 import { Song } from '@/types';
 import { useMusicStore } from '@/store/useMusicStore';
 import { cn, formatViews } from '@/lib/utils';
+import { getProxiedImageUrl } from '@/lib/youtubeApi';
 
 interface SongCardProps {
   song: Song;
@@ -62,7 +63,7 @@ export default function SongCard({
         
         <div className="relative w-14 h-14 flex-shrink-0">
           <img
-            src={song.cover}
+            src={getProxiedImageUrl(song.cover)}
             alt={song.title}
             className="w-full h-full rounded-lg object-cover"
           />
@@ -115,7 +116,7 @@ export default function SongCard({
       >
         <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
           <img
-            src={song.cover}
+            src={getProxiedImageUrl(song.cover)}
             alt={song.title}
             className="w-full h-full object-cover"
           />
@@ -148,7 +149,7 @@ export default function SongCard({
       >
         <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 shadow-lg">
           <img
-            src={song.cover}
+            src={getProxiedImageUrl(song.cover)}
             alt={song.title}
             className="w-full h-full object-cover"
           />
@@ -176,7 +177,7 @@ export default function SongCard({
     >
       <div className="relative w-16 h-16 flex-shrink-0">
         <img
-          src={song.cover}
+          src={getProxiedImageUrl(song.cover)}
           alt={song.title}
           className="w-full h-full rounded-xl object-cover"
         />

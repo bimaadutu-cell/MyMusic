@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Search, User, Play, ChevronRight, Clock, TrendingUp } from 'lucide-react';
 import { useMusicStore } from '@/store/useMusicStore';
-import { mockSongs, mockArtists, getTrendingSongs, getNewReleases, getQuickPicks, getMoodCategories } from '@/lib/musicApi';
+import { mockSongs, mockArtists, getQuickPicks, getMoodCategories } from '@/lib/musicApi';
+import { getTrendingSongs, getNewReleases } from '@/lib/youtubeApi';
 import { Song, Artist } from '@/types';
 import SongCard from '@/components/SongCard';
 import ArtistCard from '@/components/ArtistCard';
@@ -52,9 +53,17 @@ const setScrollRef = (key: string) => (el: HTMLDivElement | null) => {
     else if (hour < 20) setGreeting('Selamat sore');
     else setGreeting('Selamat malam');
 
-    // Load data
-    setTrendingSongs(getTrendingSongs());
-    setNewReleases(getNewReleases());
+    // Load data from YouTube Music API
+    const loadTrending = async () => {
+      const trending = await getTrendingSongs();
+      if (trending.length > 0) setTrendingSongs(trending);
+    };
+    const loadNewReleases = async () => {
+      const releases = await getNewReleases();
+      if (releases.length > 0) setNewReleases(releases);
+    };
+    loadTrending();
+    loadNewReleases();
     setQuickPicks(getQuickPicks());
     setArtists(mockArtists);
   }, []);

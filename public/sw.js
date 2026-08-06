@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mymusik-v1';
+const CACHE_NAME = 'mymusik-v2';
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -18,6 +18,20 @@ self.addEventListener('install', (event) => {
     })
   );
   self.skipWaiting();
+});
+
+// Keep audio playing in background
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
+  );
+  self.clients.claim();
 });
 
 // Activate event

@@ -73,6 +73,10 @@ export default function RootLayout({
         <meta name="application-name" content="MyMusik" />
         <meta name="msapplication-TileColor" content="#00FF88" />
         <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="theme-color" content="#050505" media="(prefers-color-scheme: dark)" />
+        <meta name="background-color" content="#050505" />
+        <link rel="preconnect" href="https://images.weserv.nl" />
+        <link rel="dns-prefetch" href="https://images.weserv.nl" />
       </head>
       <body className={`${inter.className} antialiased bg-[#050505] text-white min-h-screen`}>
         {children}

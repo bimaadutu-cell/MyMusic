@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Artist } from '@/types';
 import { useMusicStore } from '@/store/useMusicStore';
 import { cn } from '@/lib/utils';
+import { getProxiedImageUrl } from '@/lib/youtubeApi';
 
 interface ArtistCardProps {
   artist: Artist;
@@ -38,7 +39,7 @@ export default function ArtistCard({
       >
         <div className="relative w-20 h-20 mb-2">
           <img
-            src={artist.cover}
+            src={getProxiedImageUrl(artist.cover)}
             alt={artist.name}
             className="w-full h-full rounded-full object-cover border-2 border-transparent hover:border-[#00FF88] transition-colors"
           />
@@ -62,7 +63,7 @@ export default function ArtistCard({
         )}
       >
         <img
-          src={artist.cover}
+          src={getProxiedImageUrl(artist.cover)}
           alt={artist.name}
           className="w-full h-full object-cover"
         />
@@ -88,7 +89,7 @@ export default function ArtistCard({
       )}
     >
       <img
-        src={artist.cover}
+        src={getProxiedImageUrl(artist.cover)}
         alt={artist.name}
         className="w-14 h-14 rounded-full object-cover"
       />

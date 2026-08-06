@@ -10,7 +10,9 @@ import {
 } from 'lucide-react';
 import { useMusicStore } from '@/store/useMusicStore';
 import { formatTime, cn } from '@/lib/utils';
-import { Song, translateLyric } from '@/lib/musicApi';
+import { Song } from '@/types';
+import { getProxiedImageUrl } from '@/lib/youtubeApi';
+import { translateLyric } from '@/lib/musicApi';
 
 export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -65,17 +67,26 @@ export default function MusicPlayer() {
         nextSong();
       }
     };
+    
+    const handleCanPlay = () => {
+      // Auto play when ready
+      if (isPlaying) {
+        audio.play().catch(() => {});
+      }
+    };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('canplay', handleCanPlay);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
-  }, [repeatMode, nextSong, setCurrentTime, setDuration]);
+  }, [repeatMode, nextSong, setCurrentTime, setDuration, isPlaying]);
 
   // Play/Pause control
   useEffect(() => {
@@ -192,7 +203,7 @@ export default function MusicPlayer() {
             >
               <div className="flex items-center p-2 gap-3">
                 <img
-                  src={currentSong.cover}
+                  src={getProxiedImageUrl(currentSong.cover)}
                   alt={currentSong.title}
                   className={cn(
                     "w-12 h-12 rounded-lg object-cover",
@@ -245,7 +256,7 @@ export default function MusicPlayer() {
             <div 
               className="absolute inset-0 opacity-30"
               style={{
-                backgroundImage: `url(${currentSong.cover})`,
+                backgroundImage: `url(${getProxiedImageUrl(currentSong.cover)})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 filter: 'blur(100px)',
@@ -276,7 +287,7 @@ export default function MusicPlayer() {
                 className="relative w-72 h-72 mb-8"
               >
                 <motion.img
-                  src={currentSong.cover}
+                  src={getProxiedImageUrl(currentSong.cover)}
                   alt={currentSong.title}
                   className={cn(
                     "w-full h-full rounded-2xl object-cover shadow-2xl",
@@ -287,7 +298,7 @@ export default function MusicPlayer() {
                 {/* Glow Effect */}
                 <div 
                   className="absolute inset-0 rounded-2xl opacity-50 blur-2xl -z-10"
-                  style={{ backgroundImage: `url(${currentSong.cover})`, backgroundSize: 'cover' }}
+                  style={{ backgroundImage: `url(${getProxiedImageUrl(currentSong.cover)})`, backgroundSize: 'cover' }}
                 />
               </motion.div>
 
@@ -520,7 +531,7 @@ export default function MusicPlayer() {
                     song.id === currentSong?.id ? "bg-white/10" : "hover:bg-white/5"
                   )}
                 >
-                  <img src={song.cover} alt={song.title} className="w-12 h-12 rounded-lg object-cover" />
+                  <img src={getProxiedImageUrl(song.cover)} alt={song.title} className="w-12 h-12 rounded-lg object-cover" />
                   <div className="flex-1 min-w-0">
                     <p className={cn("font-medium truncate", song.id === currentSong?.id && "text-[#00FF88]")}>
                       {song.title}

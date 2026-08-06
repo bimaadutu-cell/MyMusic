@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ArrowLeft, X, Clock, TrendingUp, Mic } from 'lucide-react';
 import { useMusicStore } from '@/store/useMusicStore';
-import { mockSongs, mockArtists, searchSongs } from '@/lib/musicApi';
+import { searchYouTubeMusic, getProxiedImageUrl } from '@/lib/youtubeApi';
 import { Song, Artist } from '@/types';
 import SongCard from '@/components/SongCard';
 import ArtistCard from '@/components/ArtistCard';
@@ -12,6 +12,7 @@ import MusicPlayer from '@/components/MusicPlayer';
 import BottomNav from '@/components/BottomNav';
 import { useRouter } from 'next/navigation';
 import { debounce } from '@/lib/utils';
+import { mockSongs } from '@/lib/musicApi';
 
 const trendingSearches = [
   'bergema selamanya',
@@ -31,22 +32,27 @@ export default function SearchPage() {
   const [showResults, setShowResults] = useState(false);
 
   const performSearch = useCallback(
-    debounce((searchQuery: any) => {
+    debounce(async (searchQuery: any) => {
       if (searchQuery.trim()) {
         setIsSearching(true);
-        const searchResults = searchSongs(searchQuery);
-        setResults({
-          songs: searchResults.songs,
-          artists: searchResults.artists,
-        });
-        addSearchHistory(searchQuery);
-        setIsSearching(false);
-        setShowResults(true);
+        try {
+          const searchResults = await searchYouTubeMusic(searchQuery);
+          setResults({
+            songs: searchResults.songs,
+            artists: searchResults.artists,
+          });
+          addSearchHistory(searchQuery);
+          setShowResults(true);
+        } catch (error) {
+          console.error('Search error:', error);
+        } finally {
+          setIsSearching(false);
+        }
       } else {
         setResults({ songs: [], artists: [] });
         setShowResults(false);
       }
-    }, 300),
+    }, 500),
     []
   );
 
