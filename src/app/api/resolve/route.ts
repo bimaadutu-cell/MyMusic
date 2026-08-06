@@ -5,10 +5,8 @@ export async function GET(req: Request) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
-  // ALGORITMA PENYELESAIAN BACKGROUND PLAY MATI:
-  // Jika pakai YTDL, URL googlevideo akan mengunci IP Server (Vercel). Saat HP kamu memutar, Google menolaknya (403 Forbidden).
-  // Akibatnya saat layar mati, HP gagal membuffer chunk selanjutnya dan lagu MATI.
-  // SOLUSI: Gunakan URL Proxy dari Piped API yang meredirect stream audio secara global tanpa IP Lock.
+  // VERCEL ROBUST RESOLVER: Menggunakan Promise.any agar jika satu server down/lelet, 
+  // API akan langsung mengembalikan respon server yang tercepat tanpa harus kena limit Vercel (10s).
   
   const instances = [
     "https://pipedapi.kavin.rocks",
@@ -17,30 +15,27 @@ export async function GET(req: Request) {
     "https://piped-api.garudalinux.org"
   ];
 
-  for (const instance of instances) {
-    try {
+  try {
+    const url = await Promise.any(instances.map(async (instance) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
       const res = await fetch(`${instance}/streams/${id}`, { signal: controller.signal });
       clearTimeout(timeoutId);
       
-      if (res.ok) {
-        const data = await res.json();
-        const audioStreams = data.audioStreams;
-        if (audioStreams && audioStreams.length > 0) {
-          // Cari audio dengan bitrate terbaik (M4A/WebM)
-          const bestAudio = audioStreams.sort((a: any, b: any) => b.bitrate - a.bitrate)[0];
-          if (bestAudio && bestAudio.url) {
-            return NextResponse.json({ url: bestAudio.url });
-          }
-        }
+      if (!res.ok) throw new Error("Not ok");
+      
+      const data = await res.json();
+      const audioStreams = data.audioStreams;
+      if (audioStreams && audioStreams.length > 0) {
+        const bestAudio = audioStreams.sort((a: any, b: any) => b.bitrate - a.bitrate)[0];
+        if (bestAudio && bestAudio.url) return bestAudio.url;
       }
-    } catch (e) {
-      continue;
-    }
+      throw new Error("No URL found");
+    }));
+    
+    return NextResponse.json({ url });
+  } catch (e) {
+    // Fallback absolut
+    return NextResponse.json({ url: `https://invidious.flokinet.to/latest_version?id=${id}&itag=140` });
   }
-
-  // Fallback stabil Invidious jika semua Piped sedang sibuk
-  const fallbackUrl = `https://invidious.flokinet.to/latest_version?id=${id}&itag=140`;
-  return NextResponse.json({ url: fallbackUrl });
 }

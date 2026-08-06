@@ -250,6 +250,15 @@ function AppContent() {
     alert(`${song.title} ditambahkan ke antrean!`);
   };
 
+  const handleSimulatedLogin = (account: any) => {
+    localStorage.setItem("mymusik_auth", JSON.stringify(account));
+    setUserAccount(account);
+    setIsLoggedIn(true);
+    
+    const hasPremium = localStorage.getItem("mymusik_premium");
+    if (!hasPremium) setShowPremiumModal(true);
+  };
+
   const createPlaylist = (name: string) => {
     if (!name.trim()) return;
     setPlaylists(prev => {
