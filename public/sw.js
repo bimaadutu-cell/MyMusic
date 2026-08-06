@@ -1,41 +1,113 @@
-const CACHE_NAME = "mymusik-v6";
-const ASSETS = ["/", "/logo.png", "/dev-logo.jpg", "/manifest.json"];
+const CACHE_NAME = 'mymusik-v1';
+const STATIC_ASSETS = [
+  '/',
+  '/login',
+  '/home',
+  '/search',
+  '/library',
+  '/developer',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png'
+];
 
-self.addEventListener("install", (e) => {
+// Install event
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
+  );
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS)));
 });
 
-self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null))));
+// Activate event
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
+  );
+  self.clients.claim();
 });
 
-self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
-  const url = new URL(e.request.url);
+// Fetch event
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  
+  // Skip non-GET requests
+  if (request.method !== 'GET') return;
+  
+  // Skip chrome-extension requests
+  if (request.url.startsWith('chrome-extension://')) return;
+  
+  // Skip API requests
+  if (request.url.includes('/api/')) return;
+  
+  event.respondWith(
+    caches.match(request).then((response) => {
+      if (response) {
+        return response;
+      }
+      
+      return fetch(request).then((fetchResponse) => {
+        // Don't cache if not valid response
+        if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic') {
+          return fetchResponse;
+        }
+        
+        const responseToCache = fetchResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, responseToCache);
+        });
+        
+        return fetchResponse;
+      });
+    }).catch(() => {
+      // Return offline fallback if available
+      if (request.mode === 'navigate') {
+        return caches.match('/offline');
+      }
+    })
+  );
+});
 
-  // Jangan cache audio stream/resolve agar file besar tidak merusak service worker
-  if (url.pathname.startsWith('/api/resolve')) return;
-
-  if (url.pathname.startsWith('/api/')) {
-    e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open('mymusik-api').then(c => c.put(e.request, clone));
-          return res;
-        })
-        .catch(() => caches.match(e.request).then(res => res || new Response("[]", { headers: { "Content-Type": "application/json" } })))
-    );
-  } else {
-    e.respondWith(
-      caches.match(e.request).then((r) => {
-        return r || fetch(e.request).then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-          return response;
-        }).catch(() => caches.match("/"));
-      })
-    );
+// Background sync for offline queue
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'background-sync') {
+    event.waitUntil(doBackgroundSync());
   }
+});
+
+async function doBackgroundSync() {
+  // Handle background sync logic here
+  console.log('Background sync executed');
+}
+
+// Push notification
+self.addEventListener('push', (event) => {
+  const options = {
+    body: event.data?.text() || 'Notifikasi baru dari MyMusik',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    vibrate: [100, 50, 100],
+    data: {
+      url: '/'
+    }
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification('MyMusik', options)
+  );
+});
+
+// Notification click
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow(event.notification.data?.url || '/')
+  );
 });
