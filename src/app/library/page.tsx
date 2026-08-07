@@ -7,6 +7,7 @@ import { useMusicStore } from '@/store/useMusicStore';
 import { useRouter } from 'next/navigation';
 import { Song, Playlist } from '@/types';
 import MusicPlayer from '@/components/MusicPlayer';
+import AudioPlayer from '@/components/AudioPlayer';
 import BottomNav from '@/components/BottomNav';
 
 export default function LibraryPage() {
@@ -270,6 +271,7 @@ export default function LibraryPage() {
       </AnimatePresence>
 
       <MusicPlayer />
+      <AudioPlayer />
       <BottomNav />
     </div>
   );

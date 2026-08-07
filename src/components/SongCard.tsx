@@ -5,7 +5,7 @@ import { Play, MoreVertical, Clock } from 'lucide-react';
 import { Song } from '@/types';
 import { useMusicStore } from '@/store/useMusicStore';
 import { cn, formatViews } from '@/lib/utils';
-import { getProxiedImageUrl } from '@/lib/youtubeApi';
+import { getProxiedImageUrl } from '@/lib/youtubeMusicApi';
 
 interface SongCardProps {
   song: Song;

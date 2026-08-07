@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Search, User, Play, ChevronRight, Clock, TrendingUp } from 'lucide-react';
 import { useMusicStore } from '@/store/useMusicStore';
 import { mockSongs, mockArtists, getQuickPicks, getMoodCategories } from '@/lib/musicApi';
-import { getTrendingSongs, getNewReleases } from '@/lib/youtubeApi';
+import { getTrendingSongs, getNewReleases } from '@/lib/youtubeMusicApi';
 import { Song, Artist } from '@/types';
 import SongCard from '@/components/SongCard';
 import ArtistCard from '@/components/ArtistCard';
 import MusicPlayer from '@/components/MusicPlayer';
+import AudioPlayer from '@/components/AudioPlayer';
 import BottomNav from '@/components/BottomNav';
 import InstallPrompt from '@/components/InstallPrompt';
 import { useRouter } from 'next/navigation';
@@ -54,16 +55,19 @@ const setScrollRef = (key: string) => (el: HTMLDivElement | null) => {
     else setGreeting('Selamat malam');
 
     // Load data from YouTube Music API
-    const loadTrending = async () => {
-      const trending = await getTrendingSongs();
-      if (trending.length > 0) setTrendingSongs(trending);
+    const loadData = async () => {
+      try {
+        const [trending, releases] = await Promise.all([
+          getTrendingSongs(),
+          getNewReleases()
+        ]);
+        if (trending.length > 0) setTrendingSongs(trending);
+        if (releases.length > 0) setNewReleases(releases);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      }
     };
-    const loadNewReleases = async () => {
-      const releases = await getNewReleases();
-      if (releases.length > 0) setNewReleases(releases);
-    };
-    loadTrending();
-    loadNewReleases();
+    loadData();
     setQuickPicks(getQuickPicks());
     setArtists(mockArtists);
   }, []);
@@ -326,6 +330,7 @@ const setScrollRef = (key: string) => (el: HTMLDivElement | null) => {
       </AnimatePresence>
 
       <MusicPlayer />
+      <AudioPlayer />
       <BottomNav />
       <InstallPrompt />
     </div>

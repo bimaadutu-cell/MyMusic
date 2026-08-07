@@ -6,6 +6,7 @@ import { useMusicStore } from '@/store/useMusicStore';
 import { useRouter } from 'next/navigation';
 import SongCard from '@/components/SongCard';
 import MusicPlayer from '@/components/MusicPlayer';
+import AudioPlayer from '@/components/AudioPlayer';
 import BottomNav from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
 
@@ -170,6 +171,7 @@ export default function ArtistPage() {
       )}
 
       <MusicPlayer />
+      <AudioPlayer />
       <BottomNav />
     </div>
   );

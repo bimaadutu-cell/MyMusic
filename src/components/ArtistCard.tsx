@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Artist } from '@/types';
 import { useMusicStore } from '@/store/useMusicStore';
 import { cn } from '@/lib/utils';
-import { getProxiedImageUrl } from '@/lib/youtubeApi';
+import { getProxiedImageUrl } from '@/lib/youtubeMusicApi';
 
 interface ArtistCardProps {
   artist: Artist;

@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ArrowLeft, X, Clock, TrendingUp, Mic } from 'lucide-react';
 import { useMusicStore } from '@/store/useMusicStore';
-import { searchYouTubeMusic, getProxiedImageUrl } from '@/lib/youtubeApi';
+import { searchYouTubeMusic, getProxiedImageUrl } from '@/lib/youtubeMusicApi';
 import { Song, Artist } from '@/types';
 import SongCard from '@/components/SongCard';
 import ArtistCard from '@/components/ArtistCard';
 import MusicPlayer from '@/components/MusicPlayer';
+import AudioPlayer from '@/components/AudioPlayer';
 import BottomNav from '@/components/BottomNav';
 import { useRouter } from 'next/navigation';
 import { debounce } from '@/lib/utils';
@@ -52,7 +53,7 @@ export default function SearchPage() {
         setResults({ songs: [], artists: [] });
         setShowResults(false);
       }
-    }, 500),
+    }, 300),
     []
   );
 
@@ -234,6 +235,7 @@ export default function SearchPage() {
       </main>
 
       <MusicPlayer />
+      <AudioPlayer />
       <BottomNav />
     </div>
   );

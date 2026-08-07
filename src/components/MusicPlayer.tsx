@@ -1,28 +1,24 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Heart, ListMusic, ChevronDown,
-  Share2, Mic2, Cast, MoreVertical, Plus, X,
-  Timer, ArrowLeft
+  Share2, Mic2, Cast, MoreVertical, X,
+  ArrowLeft
 } from 'lucide-react';
 import { useMusicStore } from '@/store/useMusicStore';
 import { formatTime, cn } from '@/lib/utils';
-import { Song } from '@/types';
-import { getProxiedImageUrl } from '@/lib/youtubeApi';
-import { translateLyric } from '@/lib/musicApi';
+import { getProxiedImageUrl, translateLyric } from '@/lib/youtubeMusicApi';
+import AudioPlayer from './AudioPlayer';
 
 export default function MusicPlayer() {
-  const audioRef = useRef<HTMLAudioElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [showSleepTimer, setShowSleepTimer] = useState(false);
-  const [sleepTimer, setSleepTimer] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [currentLyricIndex, setCurrentLyricIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -41,78 +37,16 @@ export default function MusicPlayer() {
     togglePlay,
     setVolume,
     setCurrentTime,
-    setDuration,
     nextSong,
     previousSong,
     toggleShuffle,
     toggleRepeat,
     toggleFavorite,
     isFavorite,
-    addToQueue,
     removeFromQueue,
   } = useMusicStore();
 
-  // Audio event handlers
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => setDuration(audio.duration || 0);
-    const handleEnded = () => {
-      if (repeatMode === 'one') {
-        audio.currentTime = 0;
-        audio.play();
-      } else {
-        nextSong();
-      }
-    };
-    
-    const handleCanPlay = () => {
-      // Auto play when ready
-      if (isPlaying) {
-        audio.play().catch(() => {});
-      }
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('canplay', handleCanPlay);
-
-    return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('canplay', handleCanPlay);
-    };
-  }, [repeatMode, nextSong, setCurrentTime, setDuration, isPlaying]);
-
-  // Play/Pause control
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentSong) return;
-
-    if (isPlaying) {
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          // Auto-play was prevented
-        });
-      }
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying, currentSong]);
-
-  // Volume control
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted]);
-
-  // Update current lyric based on time
+  // Update lyric index based on current time
   useEffect(() => {
     if (!currentSong?.lyrics) return;
     
@@ -123,7 +57,6 @@ export default function MusicPlayer() {
     
     if (index !== -1 && index !== currentLyricIndex) {
       setCurrentLyricIndex(index);
-      // Auto scroll lyrics
       if (lyricsRef.current) {
         const lyricElement = lyricsRef.current.children[index] as HTMLElement;
         if (lyricElement) {
@@ -133,23 +66,10 @@ export default function MusicPlayer() {
     }
   }, [currentTime, currentSong, currentLyricIndex]);
 
-  // Sleep timer
-  useEffect(() => {
-    if (sleepTimer && sleepTimer > 0) {
-      const timer = setTimeout(() => {
-        togglePlay();
-        setSleepTimer(null);
-      }, sleepTimer * 60 * 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [sleepTimer, togglePlay]);
-
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
     setCurrentTime(time);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-    }
+    // The actual seeking is handled by the AudioPlayer component
   };
 
   const handleShare = async () => {
@@ -164,11 +84,10 @@ export default function MusicPlayer() {
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch (err) {
+      } catch {
         console.log('Share cancelled');
       }
     } else {
-      // Copy to clipboard
       navigator.clipboard.writeText(`${shareData.text} - ${shareData.url}`);
     }
     setShowShare(false);
@@ -181,12 +100,8 @@ export default function MusicPlayer() {
 
   return (
     <>
-      {/* Audio Element */}
-      <audio
-        ref={audioRef}
-        src={currentSong.audioUrl || `https://www.youtube.com/embed/${currentSong.videoId}?autoplay=1`}
-        preload="metadata"
-      />
+      {/* Audio Player Component */}
+      <AudioPlayer />
 
       {/* Mini Player */}
       <AnimatePresence>
@@ -234,7 +149,7 @@ export default function MusicPlayer() {
               <div className="h-1 bg-gray-700">
                 <motion.div
                   className="h-full bg-[#00FF88]"
-                  style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                  style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                 />
               </div>
             </div>
@@ -264,7 +179,7 @@ export default function MusicPlayer() {
             />
 
             {/* Header */}
-            <div className="relative z-10 flex items-center justify-between p-4 pt-safe-area-top">
+            <div className="relative z-10 flex items-center justify-between p-4">
               <button onClick={() => setIsExpanded(false)} className="p-2">
                 <ChevronDown className="w-6 h-6 text-white" />
               </button>
@@ -295,7 +210,6 @@ export default function MusicPlayer() {
                   )}
                   style={{ animationDuration: '20s' }}
                 />
-                {/* Glow Effect */}
                 <div 
                   className="absolute inset-0 rounded-2xl opacity-50 blur-2xl -z-10"
                   style={{ backgroundImage: `url(${getProxiedImageUrl(currentSong.cover)})`, backgroundSize: 'cover' }}
@@ -344,9 +258,9 @@ export default function MusicPlayer() {
                   max={duration || 100}
                   value={currentTime}
                   onChange={handleSeek}
-                  className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                  className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
                   style={{
-                    background: `linear-gradient(to right, white ${(currentTime / (duration || 1)) * 100}%, #333 ${(currentTime / (duration || 1)) * 100}%)`
+                    background: `linear-gradient(to right, white ${duration > 0 ? (currentTime / duration) * 100 : 0}%, #333 ${duration > 0 ? (currentTime / duration) * 100 : 0}%)`
                   }}
                 />
                 <div className="flex justify-between mt-2 text-xs text-gray-400">
@@ -452,16 +366,12 @@ export default function MusicPlayer() {
                           ? "text-white font-bold text-xl scale-105" 
                           : "text-gray-500"
                       )}
-                      animate={{
-                        opacity: index === currentLyricIndex ? 1 : 0.5,
-                        scale: index === currentLyricIndex ? 1.05 : 1,
-                      }}
                     >
                       {line.text}
-                      {showTranslation && line.text && (
+                      {showTranslation && (
                         <motion.p
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
                           className="text-sm text-[#00FF88] mt-1"
                         >
                           {translateLyric(line.text, translationLang)}
@@ -481,7 +391,7 @@ export default function MusicPlayer() {
             {/* Translation Toggle */}
             <div className="absolute bottom-20 left-0 right-0 flex justify-center gap-4">
               <button
-                onClick={() => { setShowTranslation(false); setTranslationLang('id'); }}
+                onClick={() => { setShowTranslation(false); }}
                 className={cn(
                   "px-4 py-2 rounded-full text-sm",
                   !showTranslation ? "bg-white text-black" : "bg-white/10 text-white"
@@ -490,7 +400,7 @@ export default function MusicPlayer() {
                 Original
               </button>
               <button
-                onClick={() => { setShowTranslation(true); setTranslationLang('id'); }}
+                onClick={() => { setShowTranslation(true); }}
                 className={cn(
                   "px-4 py-2 rounded-full text-sm",
                   showTranslation ? "bg-[#00FF88] text-black" : "bg-white/10 text-white"
@@ -531,7 +441,11 @@ export default function MusicPlayer() {
                     song.id === currentSong?.id ? "bg-white/10" : "hover:bg-white/5"
                   )}
                 >
-                  <img src={getProxiedImageUrl(song.cover)} alt={song.title} className="w-12 h-12 rounded-lg object-cover" />
+                  <img 
+                    src={getProxiedImageUrl(song.cover)} 
+                    alt={song.title} 
+                    className="w-12 h-12 rounded-lg object-cover" 
+                  />
                   <div className="flex-1 min-w-0">
                     <p className={cn("font-medium truncate", song.id === currentSong?.id && "text-[#00FF88]")}>
                       {song.title}

@@ -7,6 +7,7 @@ import { mockSongs } from '@/lib/musicApi';
 import { useRouter } from 'next/navigation';
 import SongCard from '@/components/SongCard';
 import MusicPlayer from '@/components/MusicPlayer';
+import AudioPlayer from '@/components/AudioPlayer';
 import BottomNav from '@/components/BottomNav';
 
 export default function SamplePage() {
@@ -83,6 +84,7 @@ export default function SamplePage() {
       </div>
 
       <MusicPlayer />
+      <AudioPlayer />
       <BottomNav />
     </div>
   );
